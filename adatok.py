@@ -3,15 +3,15 @@ class data:
 
 
     # Kik legyenek a támadók
-    #attackers = [False, False, False, False, False]
-    attackers = [True, True, True, True, True]
+    attackers = [False, False, False, False, False]
+    #attackers = [True, True, True, True, True]
 
-    # Milyen százalékban hajtsanak végre támadást
+    # Milyen százalékban haj0tsanak végre támadást
     miss_labeling = [0,0,0,0,0]
-    #miss_labeling = [90, 90, 90, 90, 90]
+    #miss_labeling = [100,100,75,75,75]
 
     #noise = [0,0,0,0,0]
-    noise = [90, 90, 50, 10, 10]
+    noise = [100,100, 50, 10, 10]
 
     #-------------------------------------------------------------------------------------------------------------------
     #INNENTŐL MÉG SEMMI SEM HASZNÁLHATÓ
