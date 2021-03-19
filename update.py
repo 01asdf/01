@@ -5,7 +5,7 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
-import attack
+import adatok
 
 class DatasetSplit(Dataset):
     """An abstract Dataset class wrapped around Pytorch Dataset class.
@@ -67,8 +67,7 @@ class LocalUpdate(object):
         for iter in range(self.args.local_ep):
             batch_loss = []
             for batch_idx, (images, labels) in enumerate(self.trainloader):
-                #images, labels = images.to(self.device), labels.to(self.device)
-                images, labels = attack.attack(images.to(self.device), labels.to(self.device))
+                images, labels = images.to(self.device), labels.to(self.device)
 
                 model.zero_grad()
                 log_probs = model(images)
@@ -96,7 +95,7 @@ class LocalUpdate(object):
 
         for batch_idx, (images, labels) in enumerate(self.testloader):
             images, labels = images.to(self.device), labels.to(self.device)
-            #images, labels = kepszetvalaszto.attack(images.to(self.device), labels.to(self.device))
+
             # Inference
             outputs = model(images)
             batch_loss = self.criterion(outputs, labels)
@@ -125,18 +124,25 @@ def test_inference(args, model, test_dataset):
                             shuffle=False)
 
     for batch_idx, (images, labels) in enumerate(testloader):
-        images, labels = images.to(device), labels.to(device)
+        if adatok.data.actual_test_group_in_binary[batch_idx%adatok.data.number_users]==1:
+            images, labels = images.to(device), labels.to(device)
+            j=0
+            for i in labels:
+                if adatok.data.user_labels_percents[batch_idx%adatok.data.number_users][int(i)]==0:
+                    labels=torch.cat([labels[:j],labels[j+1:]])
+                    images=torch.cat([images[:j],images[j+1:]])
+                j+=1
 
-        # Inference
-        outputs = model(images)
-        batch_loss = criterion(outputs, labels)
-        loss += batch_loss.item()
+            # Inference
+            outputs = model(images)
+            batch_loss = criterion(outputs, labels)
+            loss += batch_loss.item()
 
-        # Prediction
-        _, pred_labels = torch.max(outputs, 1)
-        pred_labels = pred_labels.view(-1)
-        correct += torch.sum(torch.eq(pred_labels, labels)).item()
-        total += len(labels)
+            # Prediction
+            _, pred_labels = torch.max(outputs, 1)
+            pred_labels = pred_labels.view(-1)
+            correct += torch.sum(torch.eq(pred_labels, labels)).item()
+            total += len(labels)
 
     accuracy = correct/total
     return accuracy, loss

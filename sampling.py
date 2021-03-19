@@ -5,7 +5,8 @@
 
 import numpy as np
 from torchvision import datasets, transforms
-import attack
+import adatok
+import random
 
 
 def mnist_iid(dataset, num_users):
@@ -34,24 +35,45 @@ def mnist_noniid(dataset, num_users):
     # 60,000 training imgs -->  200 imgs/shard X 300 shards
     num_shards, num_imgs = 200, 300
     idx_shard = [i for i in range(num_shards)]
-    dict_users = {i: np.array([]) for i in range(num_users)}
-    idxs = np.arange(num_shards*num_imgs)
-    labels = dataset.train_labels.numpy()
+    #ITT
+    users_in_group=adatok.data.actual_train_group_in_binary
+    count_users_in_group=sum(users_in_group)
+    dict_users = {i: np.array([]) for i in range(count_users_in_group)}
 
-    # sort labels
-    idxs_labels = np.vstack((idxs, labels))
-    idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
-    idxs = idxs_labels[0, :]
+    if adatok.data.image_initialization:
+        idxs = np.arange(num_shards*num_imgs)
+        labels = dataset.train_labels.numpy()
 
-    # divide and assign 2 shards/client
-    for i in range(num_users):
-        rand_set = set(np.random.choice(idx_shard, 2, replace=False))
-        idx_shard = list(set(idx_shard) - rand_set)
-        for rand in rand_set:
-            dict_users[i] = np.concatenate(
-                (dict_users[i], idxs[rand*num_imgs:(rand+1)*num_imgs]), axis=0)
-    #print(dict_users)
-    return dict_users
+        # sort labels
+        idxs_labels = np.vstack((idxs, labels))
+
+        idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
+        idxs = idxs_labels[0, :]
+
+        #Label indexek
+        label_idxs = idxs_labels[1, :]
+        index_borders=[0]
+        label_type=0
+        for i in range(len(label_idxs)):
+            if label_idxs[i]!=label_type:
+                index_borders.append(i)
+                label_type+=1
+        index_borders.append(len(label_idxs))
+
+
+        which_user_get_data=0
+        for i in range(adatok.data.num_users):
+            num_images_for_user_i=adatok.data.user_images_count[i]
+            for j in range(len(index_borders)-1):
+                if adatok.data.user_labels_percents[i][j]!=0:
+                    images_from_this_label=int(adatok.data.user_labels_percents[i][j]*num_images_for_user_i/100)
+                    start_index=random.randrange(index_borders[j],index_borders[j+1]-images_from_this_label)
+                    dict_users[which_user_get_data] = np.concatenate((dict_users[which_user_get_data], idxs[start_index:start_index+images_from_this_label]), axis=0)
+            which_user_get_data+=1
+        adatok.data.dict_users=dict_users
+        return dict_users
+    else:
+        return adatok.get_dictusers()
 
 
 def mnist_noniid_unequal(dataset, num_users):
@@ -169,24 +191,45 @@ def cifar_noniid(dataset, num_users):
     """
     num_shards, num_imgs = 200, 250
     idx_shard = [i for i in range(num_shards)]
-    dict_users = {i: np.array([]) for i in range(num_users)}
-    idxs = np.arange(num_shards*num_imgs)
-    # labels = dataset.train_labels.numpy()
-    labels = np.array(dataset.train_labels)
+    #ITT
+    users_in_group=adatok.data.actual_train_group_in_binary
+    count_users_in_group=sum(users_in_group)
+    dict_users = {i: np.array([]) for i in range(count_users_in_group)}
 
-    # sort labels
-    idxs_labels = np.vstack((idxs, labels))
-    idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
-    idxs = idxs_labels[0, :]
+    if adatok.data.image_initialization:
+        idxs = np.arange(num_shards*num_imgs)
+        labels = dataset.train_labels.numpy()
 
-    # divide and assign
-    for i in range(num_users):
-        rand_set = set(np.random.choice(idx_shard, 2, replace=False))
-        idx_shard = list(set(idx_shard) - rand_set)
-        for rand in rand_set:
-            dict_users[i] = np.concatenate(
-                (dict_users[i], idxs[rand*num_imgs:(rand+1)*num_imgs]), axis=0)
-    return dict_users
+        # sort labels
+        idxs_labels = np.vstack((idxs, labels))
+
+        idxs_labels = idxs_labels[:, idxs_labels[1, :].argsort()]
+        idxs = idxs_labels[0, :]
+
+        #Label indexek
+        label_idxs = idxs_labels[1, :]
+        index_borders=[0]
+        label_type=0
+        for i in range(len(label_idxs)):
+            if label_idxs[i]!=label_type:
+                index_borders.append(i)
+                label_type+=1
+        index_borders.append(len(label_idxs))
+
+
+        which_user_get_data=0
+        for i in range(adatok.data.num_users):
+            num_images_for_user_i=adatok.data.user_images_count[i]
+            for j in range(len(index_borders)-1):
+                if adatok.data.user_labels_percents[i][j]!=0:
+                    images_from_this_label=int(adatok.data.user_labels_percents[i][j]*num_images_for_user_i/100)
+                    start_index=random.randrange(index_borders[j],index_borders[j+1]-images_from_this_label)
+                    dict_users[which_user_get_data] = np.concatenate((dict_users[which_user_get_data], idxs[start_index:start_index+images_from_this_label]), axis=0)
+            which_user_get_data+=1
+        adatok.data.dict_users=dict_users
+        return dict_users
+    else:
+        return adatok.get_dictusers()
 
 
 if __name__ == '__main__':

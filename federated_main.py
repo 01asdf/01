@@ -26,16 +26,19 @@ def main():
     # define paths
     path_project = os.path.abspath('..')
     logger = SummaryWriter('../logs')
-
     args = args_parser()
+    args=adatok.arguments(args)
     exp_details(args)
-
     if args.gpu:
         torch.cuda.set_device(args.gpu)
     device = 'cuda' if args.gpu else 'cpu'
 
     # load dataset and user groups
     train_dataset, test_dataset, user_groups = get_dataset(args)
+
+    if adatok.data.image_initialization==True:
+        adatok.data.image_initialization=False
+        return
 
     # BUILD MODEL
     if args.model == 'cnn':
@@ -61,7 +64,7 @@ def main():
     # Set the model to train and send it to device.
     global_model.to(device)
     global_model.train()
-    print(global_model)
+    #print(global_model)
 
     # copy weights
     global_weights = global_model.state_dict()
@@ -70,19 +73,18 @@ def main():
     train_loss, train_accuracy = [], []
     val_acc_list, net_list = [], []
     cv_loss, cv_acc = [], []
-    print_every = 1
+    print_every = 2
     val_loss_pre, counter = 0, 0
 
     for epoch in tqdm(range(args.epochs)):
         local_weights, local_losses = [], []
-        print(f'\n | Global Training Round : {epoch+1} |\n')
+        #print(f'\n | Global Training Round : {epoch+1} |\n')
 
         global_model.train()
         m = max(int(args.frac * args.num_users), 1)
         idxs_users = np.random.choice(range(args.num_users), m, replace=False)
 
         for idx in idxs_users:
-            adatok.data.actual_user=idx
             local_model = LocalUpdate(args=args, dataset=train_dataset,
                                       idxs=user_groups[idx], logger=logger)
             w, loss = local_model.update_weights(
@@ -111,14 +113,22 @@ def main():
         train_accuracy.append(sum(list_acc)/len(list_acc))
 
         # print global training loss after every 'i' rounds
-        if (epoch+1) % print_every == 0:
+        '''if (epoch+1) % print_every == 0:
             print(f' \nAvg Training Stats after {epoch+1} global rounds:')
             print(f'Training Loss : {np.mean(np.array(train_loss))}')
-            print('Train Accuracy: {:.2f}% \n'.format(100*train_accuracy[-1]))
+            print('Train Accuracy: {:.2f}% \n'.format(100*train_accuracy[-1]))'''
 
-    # Test inference after completion of training
-    test_acc, test_loss = test_inference(args, global_model, test_dataset)
-
+        # Test inference after completion of training
+        for i in adatok.data.test_groups_in_binary:
+            adatok.data.actual_test_group_in_binary=i
+            test_acc, test_loss = test_inference(args, global_model, test_dataset)
+            print("Resoults")
+            print(epoch)
+            print(adatok.data.actual_train_group_in_binary)
+            print(adatok.data.actual_test_group_in_binary)
+            print(test_acc)
+            print(test_loss)
+    '''
     print(f' \n Results after {args.epochs} global rounds of training:')
     print("|---- Avg Train Accuracy: {:.2f}%".format(100*train_accuracy[-1]))
     print("|---- Test Accuracy: {:.2f}%".format(100*test_acc))
@@ -156,6 +166,8 @@ def main():
     # plt.xlabel('Communication Rounds')
     # plt.savefig('../save/fed_{}_{}_{}_C[{}]_iid[{}]_E[{}]_B[{}]_acc.png'.
     #             format(args.dataset, args.model, args.epochs, args.frac,
-    #                    args.iid, args.local_ep, args.local_bs))
+    #                    args.iid, args.local_ep, args.local_bs))'''
+
+
 if __name__ == '__main__':
     main()
